@@ -42,12 +42,21 @@ class AuthController extends Controller
     }
 
     /**
-     * Complete registration (for new users)
+     * Complete registration for new user
      */
     public function completeRegistration(CompleteRegistrationRequest $request)
     {
-        // Get mobile from the authenticated temp token
-        $mobile = $request->user()->mobile;
+        $user = $request->user();
+
+        // Check if user needs to complete registration
+        if (!is_null($user->name)) {
+            return response()->json([
+                'message' => 'این کاربر قبلاً ثبت نام کامل کرده است'
+            ], 400);
+        }
+
+        // Get mobile from the authenticated user
+        $mobile = $user->mobile;
 
         $result = $this->authService->completeRegistration($mobile, $request->validated());
 

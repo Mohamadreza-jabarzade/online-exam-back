@@ -9,9 +9,8 @@ Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
-    // For users who need to complete registration
-    Route::post('/auth/complete-registration', [AuthController::class, 'completeRegistration'])
-        ->middleware('abilities:registration:complete');
+    // Complete registration (check manually in controller)
+    Route::post('/auth/complete-registration', [AuthController::class, 'completeRegistration']);
 
     // For authenticated users
     Route::post('/auth/logout', [AuthController::class, 'logout']);
