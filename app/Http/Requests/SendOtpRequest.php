@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Api;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -14,7 +14,7 @@ class SendOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mobile' => 'required|string|regex:/^09[0-9]{9}$/|max:11'
+            'mobile' => 'required|string|regex:/^09[0-9]{9}$/|size:11'
         ];
     }
 
@@ -22,8 +22,8 @@ class SendOtpRequest extends FormRequest
     {
         return [
             'mobile.required' => 'شماره موبایل الزامی است',
-            'mobile.regex' => 'فرمت شماره موبایل صحیح نیست (مثال: 09011111111)',
-            'mobile.max' => 'شماره موبایل باید 11 رقم باشد'
+            'mobile.regex' => 'فرمت شماره موبایل صحیح نیست',
+            'mobile.size' => 'شماره موبایل باید ۱۱ رقم باشد'
         ];
     }
 }

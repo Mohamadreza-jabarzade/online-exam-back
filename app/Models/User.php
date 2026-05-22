@@ -9,50 +9,45 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory,Notifiable;
 
     protected $fillable = [
         'mobile',
         'name',
-        'password',
+        'family',
+        'is_profile_completed',
+        'role',
         'otp_code',
-        'otp_expires_at',
-        'is_registered',
+        'otp_expires_at'
     ];
 
     protected $hidden = [
-        'password',
-        'otp_code',
+        'otp_code'
     ];
 
     protected $casts = [
         'otp_expires_at' => 'datetime',
-        'is_registered' => 'boolean',
+        'is_profile_completed' => 'boolean'
     ];
 
-    // تولید کد تایید ۴ رقمی
-    public function generateOtp(): string
+    // هلپِر برای چک کردن نقش
+    public function isAdmin(): bool
     {
-        $this->otp_code = rand(1000, 9999);
-        $this->otp_expires_at = now()->addMinutes(5);
-        $this->save();
-
-        return $this->otp_code;
+        return $this->role === 'admin';
     }
 
-    // بررسی کد تایید
-    public function isOtpValid(string $code): bool
+    public function isUser(): bool
     {
-        return $this->otp_code === $code &&
-            $this->otp_expires_at &&
-            $this->otp_expires_at->isFuture();
+        return $this->role === 'user';
     }
 
-    // پاک کردن کد بعد از تایید
-    public function clearOtp(): void
+    // هلپِر برای پروفایل
+    public function markProfileCompleted(): void
     {
-        $this->otp_code = null;
-        $this->otp_expires_at = null;
-        $this->save();
+        $this->update([
+            'name' => $this->name,
+            'family' => $this->family,
+            'is_profile_completed' => true
+        ]);
     }
 }

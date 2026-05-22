@@ -1,18 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\AuthController;
 
-// Public routes
-Route::post('/auth/send-otp', [AuthController::class, 'sendOtp']);
-Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/auth/otp', [AuthController::class, 'sendOtp']);
+Route::post('/auth/verify', [AuthController::class, 'verifyOtp']);
 
-// Protected routes
 Route::middleware('auth:sanctum')->group(function () {
-    // Complete registration (check manually in controller)
-    Route::post('/auth/complete-registration', [AuthController::class, 'completeRegistration']);
-
-    // For authenticated users
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::patch('/auth/signup', [AuthController::class, 'signup']);
+    Route::get('/me', [AuthController::class, 'me']); // ← روت جدید
 });

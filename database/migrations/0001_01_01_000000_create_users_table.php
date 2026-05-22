@@ -10,12 +10,13 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('mobile', 11)->unique(); // شماره موبایل
-            $table->string('name')->nullable(); // نام کاربری فارسی (بعداً پر می‌شه)
-            $table->string('password')->nullable(); // رمز عبور (بعداً پر می‌شه)
-            $table->string('otp_code', 6)->nullable(); // کد تایید
-            $table->timestamp('otp_expires_at')->nullable(); // زمان انقضای کد
-            $table->boolean('is_registered')->default(false); // آیا ثبت‌نام کامل شده؟
+            $table->string('mobile')->unique();
+            $table->string('name')->nullable();
+            $table->string('family')->nullable();
+            $table->boolean('is_profile_completed')->default(false);
+            $table->string('role')->default('user'); // user , admin
+            $table->string('otp_code')->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
             $table->timestamps();
         });
     }
