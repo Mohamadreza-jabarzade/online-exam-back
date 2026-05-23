@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class VerifyOtpRequest extends FormRequest
 {
@@ -28,5 +30,17 @@ class VerifyOtpRequest extends FormRequest
             'code.required' => 'کد تایید الزامی است',
             'code.size' => 'کد تایید باید ۴ رقم باشد'
         ];
+    }
+
+    /**
+     * بازنویسی متد مدیریت خطای ولیدیشن
+     */
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => 'خطا در اعتبارسنجی داده‌های ارسالی', // پیام فارسی دلخواه شما
+            'errors' => $validator->errors()
+        ], 422));
     }
 }

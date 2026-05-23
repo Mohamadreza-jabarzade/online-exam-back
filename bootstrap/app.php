@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'توکن نامعتبر یا منقضی شده است',
+                    'message' => 'هویت نامعتبر یا منقضی شده است',
                     'error_code' => 401
                 ], 401);
             }

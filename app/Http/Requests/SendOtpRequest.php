@@ -14,7 +14,7 @@ class SendOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mobile' => 'required|string|regex:/^09[0-9]{9}$/|size:11'
+            'mobile' => ['required', 'string', 'regex:/^09[0-9]{9}$/']
         ];
     }
 
