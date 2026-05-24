@@ -23,7 +23,7 @@ class AuthController extends Controller
             [
                 'mobile' => $mobile,
                 'otp_code' => $otpCode,
-                'otp_expires_at' => now()->addMinutes(5)
+                'otp_expires_at' => now()->addMinutes(1)
             ]
         );
 
@@ -31,7 +31,7 @@ class AuthController extends Controller
         if (!$user->wasRecentlyCreated) {
             $user->update([
                 'otp_code' => $otpCode,
-                'otp_expires_at' => now()->addMinutes(5)
+                'otp_expires_at' => now()->addMinutes(1)
             ]);
         }
 
