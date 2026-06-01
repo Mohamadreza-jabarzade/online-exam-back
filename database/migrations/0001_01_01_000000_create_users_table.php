@@ -11,12 +11,10 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('mobile')->unique();
-            $table->string('name')->nullable();
-            $table->string('family')->nullable();
-            $table->boolean('is_profile_completed')->default(false);
-            $table->string('role')->default('user'); // user , admin
+            $table->string('role')->default('user'); // user, admin
             $table->string('otp_code')->nullable();
             $table->timestamp('otp_expires_at')->nullable();
+            $table->timestamp('last_otp_sent_at')->nullable(); // فیلد جدید برای تایمر
             $table->timestamps();
         });
     }

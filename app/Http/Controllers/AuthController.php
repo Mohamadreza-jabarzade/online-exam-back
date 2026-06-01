@@ -5,14 +5,32 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Http\Requests\SendOtpRequest;
 use App\Http\Requests\VerifyOtpRequest;
-use App\Http\Requests\SignupRequest;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
-    // 1. ارسال کد تایید
+    // 1. ارسال کد تایید (با محدودیت زمانی)
     public function sendOtp(SendOtpRequest $request)
     {
         $mobile = $request->mobile;
+
+        // پیدا کردن کاربر
+        $user = User::where('mobile', $mobile)->first();
+
+        // بررسی آخرین زمان ارسال کد (برای تایمر)
+        if ($user && $user->last_otp_sent_at) {
+            $timeSinceLastOtp = now()->diffInSeconds($user->last_otp_sent_at);
+            $remainingSeconds = 60 - $timeSinceLastOtp;
+
+            // اگر کمتر از 1 دقیقه از ارسال قبلی گذشته بود
+            if ($remainingSeconds > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لطفاً ' . $remainingSeconds . ' ثانیه دیگر دوباره تلاش کنید',
+                    'remaining_seconds' => $remainingSeconds
+                ], 429); // 429 Too Many Requests
+            }
+        }
 
         // تولید کد 4 رقمی تصادفی
         $otpCode = rand(1000, 9999);
@@ -20,30 +38,26 @@ class AuthController extends Controller
         // پیدا کردن کاربر یا ساختن جدید
         $user = User::firstOrCreate(
             ['mobile' => $mobile],
-            [
-                'mobile' => $mobile,
-                'otp_code' => $otpCode,
-                'otp_expires_at' => now()->addMinutes(1)
-            ]
+            ['mobile' => $mobile]
         );
 
-        // اگه کاربر از قبل وجود داشت، فقط کد رو آپدیت کن
-        if (!$user->wasRecentlyCreated) {
-            $user->update([
-                'otp_code' => $otpCode,
-                'otp_expires_at' => now()->addMinutes(1)
-            ]);
-        }
+        // آپدیت کد و زمان ارسال
+        $user->update([
+            'otp_code' => $otpCode,
+            'otp_expires_at' => now()->addMinutes(1),
+            'last_otp_sent_at' => now() // برای تایمر
+        ]);
 
-        // برگردوندن پاسخ موفق (بدون سرویس پیامکی واقعی)
+        // برگردوندن پاسخ موفق به همراه زمان باقی‌مانده (60 ثانیه)
         return response()->json([
             'success' => true,
             'message' => 'کد تایید برای شما ارسال شد',
-            'debug_otp' => (string) $otpCode
+            'remaining_seconds' => 60, // زمان مجاز برای ارسال مجدد
+            'debug_otp' => (string) $otpCode // فقط برای تست
         ], 200);
     }
 
-    // 2. تایید کد
+    // 2. تایید کد و ورود/ثبت‌نام
     public function verifyOtp(VerifyOtpRequest $request)
     {
         $mobile = $request->mobile;
@@ -69,47 +83,18 @@ class AuthController extends Controller
             'otp_expires_at' => null
         ]);
 
-        // چک کردن اینکه آیا کاربر پروفایل کامل داره یا نه
-        $isProfileCompleted = $user->is_profile_completed;
-
-        // برگردوندن پاسخ موفق
+        // برگردوندن توکن برای دسترسی
         return response()->json([
             'success' => true,
+            'message' => 'ورود با موفقیت انجام شد',
             'data' => [
-                'is_user_exist' => true,
-                'is_profile_completed' => $isProfileCompleted,
-                'token' => $user->createToken('auth-token')->plainTextToken
+                'token' => $user->createToken('auth-token')->plainTextToken,
+                'mobile' => $user->mobile
             ]
         ], 200);
     }
 
-    // 3. تکمیل ثبت‌نام (نام و نام خانوادگی)
-    public function signup(SignupRequest $request)
-    {
-        // پیدا کردن کاربر با توکن (که توی هدر Authorization میاد)
-        $user = $request->user();
-
-        // اگه کاربر احراز هویت نشده بود
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'لطفا ابتدا کد تایید را وارد کنید'
-            ], 401);
-        }
-
-        // آپدیت نام و نام خانوادگی
-        $user->update([
-            'name' => $request->name,
-            'family' => $request->family,
-            'is_profile_completed' => true
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'ثبت‌نام با موفقیت انجام شد'
-        ], 200);
-    }
-
+    // 3. دریافت اطلاعات کاربر جاری
     public function me()
     {
         $user = auth()->user();
@@ -117,8 +102,6 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'name' => $user->name,
-                'family' => $user->family,
                 'mobile' => $user->mobile
             ]
         ], 200);
