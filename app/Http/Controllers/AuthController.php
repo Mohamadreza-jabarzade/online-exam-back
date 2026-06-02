@@ -78,18 +78,18 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'ورود با موفقیت انجام شد',
             'data' => [
-                'mobile' => $user->mobile
+                'mobile' => $user->mobile,
             ]
         ])->cookie(
-            'auth_token',
-            $token,
-            60 * 24 * 7,
-            '/',
-            null,
-            $isSecure,
-            true,
-            false,
-            'none'
+            'auth_token',      // نام کوکی
+            $token,            // مقدار
+            60 * 24,           // 1 روز (1440 دقیقه)
+            '/',               // path
+            null,              // domain
+            true,              // secure (HTTPS)
+            true,              // httpOnly
+            false,             // raw
+            'none'             // sameSite
         );
     }
 
