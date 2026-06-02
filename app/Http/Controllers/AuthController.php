@@ -11,6 +11,7 @@ class AuthController extends Controller
     public function sendOtp(SendOtpRequest $request)
     {
         $mobile = $request->mobile;
+
         $user = User::where('mobile', $mobile)->first();
 
         if ($user && $user->last_otp_sent_at) {
@@ -21,7 +22,7 @@ class AuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'لطفاً ' . $remainingSeconds . ' ثانیه دیگر دوباره تلاش کنید',
-                    'remaining_seconds' => $remainingSeconds
+                    'remaining_seconds' => $remainingSeconds,
                 ], 429);
             }
         }
@@ -35,27 +36,24 @@ class AuthController extends Controller
 
         $user->update([
             'otp_code' => $otpCode,
-            'otp_expires_at' => now()->addMinutes(1),
-            'last_otp_sent_at' => now()
+            'otp_expires_at' => now()->addMinute(),
+            'last_otp_sent_at' => now(),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'کد تایید برای شما ارسال شد',
-           'data'=>[
-               'remaining_seconds' => 60,
-               'debug_otp' => (string) $otpCode
-           ]
-        ], 200);
+            'data' => [
+                'remaining_seconds' => 60,
+                'debug_otp' => (string) $otpCode,
+            ]
+        ]);
     }
 
     public function verifyOtp(VerifyOtpRequest $request)
     {
-        $mobile = $request->mobile;
-        $code = $request->code;
-
-        $user = User::where('mobile', $mobile)
-            ->where('otp_code', $code)
+        $user = User::where('mobile', $request->mobile)
+            ->where('otp_code', $request->code)
             ->where('otp_expires_at', '>', now())
             ->first();
 
@@ -68,54 +66,45 @@ class AuthController extends Controller
 
         $user->update([
             'otp_code' => null,
-            'otp_expires_at' => null
+            'otp_expires_at' => null,
         ]);
 
+        // حذف توکن‌های قبلی (اختیاری)
+        $user->tokens()->delete();
+
         $token = $user->createToken('auth-token')->plainTextToken;
-        $isSecure = app()->environment('production');
 
         return response()->json([
             'success' => true,
             'message' => 'ورود با موفقیت انجام شد',
             'data' => [
                 'mobile' => $user->mobile,
+                'token' => $token,
             ]
-        ])->cookie(
-            'auth_token',      // نام کوکی
-            $token,            // مقدار
-            60 * 24,           // 1 روز (1440 دقیقه)
-            '/',               // path
-            null,              // domain
-            true,              // secure (HTTPS)
-            true,              // httpOnly
-            false,             // raw
-            'none'             // sameSite
-        );
+        ]);
     }
 
     public function me()
     {
-        $user = auth()->user();
-
         return response()->json([
             'success' => true,
             'data' => [
-                'mobile' => $user->mobile
+                'mobile' => auth()->user()->mobile,
             ]
         ]);
     }
 
     public function logout()
     {
-        auth()->user()->currentAccessToken()->delete();
+        $user = auth()->user();
 
-        $isSecure = app()->environment('production');
+        if ($user && $user->currentAccessToken()) {
+            $user->currentAccessToken()->delete();
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'خروج با موفقیت انجام شد'
-        ])->cookie(
-            'auth_token', '', -1, '/', null, $isSecure, true, false, 'lax'
-        );
+        ]);
     }
 }
