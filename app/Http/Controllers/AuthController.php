@@ -89,7 +89,7 @@ class AuthController extends Controller
             $isSecure,
             true,
             false,
-            'lax'
+            'none'
         );
     }
 
