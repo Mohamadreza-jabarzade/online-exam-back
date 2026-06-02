@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Validation\Rule;
 
 class SendOtpRequest extends FormRequest
 {
@@ -14,7 +13,7 @@ class SendOtpRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true; // همه می‌توانند استفاده کنند
+        return true;
     }
 
     /**
@@ -54,24 +53,31 @@ class SendOtpRequest extends FormRequest
         return [
             'mobile.required' => 'شماره موبایل الزامی است',
             'mobile.string' => 'شماره موبایل باید به صورت متن وارد شود',
+            'mobile.regex' => 'شماره موبایل باید با 09 شروع شود و 11 رقم باشد',
             'mobile.size' => 'شماره موبایل باید دقیقاً 11 رقم باشد',
         ];
     }
 
     /**
      * Handle a failed validation attempt.
-     *
-     * @param  \Illuminate\Contracts\Validation\Validator  $validator
-     * @return void
-     *
-     * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     protected function failedValidation(Validator $validator)
     {
+        $errors = $validator->errors()->toArray();
+
+        // گرفتن اولین پیام خطا
+        $firstErrorMessage = null;
+
+        foreach ($errors as $field => $messages) {
+            if (!empty($messages)) {
+                $firstErrorMessage = $messages[0];
+                break;
+            }
+        }
+
         throw new HttpResponseException(response()->json([
             'success' => false,
-            'message' => 'خطا در اعتبارسنجی اطلاعات ارسالی',
-            'errors' => $validator->errors()
+            'message' => $firstErrorMessage ?? 'خطا در اعتبارسنجی اطلاعات'
         ], 422));
     }
 
@@ -80,7 +86,6 @@ class SendOtpRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // پاک کردن فاصله و کاراکترهای اضافی از شماره موبایل
         $this->merge([
             'mobile' => preg_replace('/[^0-9]/', '', $this->mobile)
         ]);

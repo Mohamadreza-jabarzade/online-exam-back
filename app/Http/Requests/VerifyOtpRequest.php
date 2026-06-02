@@ -14,7 +14,7 @@ class VerifyOtpRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true; // همه می‌توانند استفاده کنند
+        return true;
     }
 
     /**
@@ -30,13 +30,13 @@ class VerifyOtpRequest extends FormRequest
                 'string',
                 'regex:/^09[0-9]{9}$/',
                 'size:11',
-                'exists:users,mobile' // بررسی وجود شماره در دیتابیس
+                'exists:users,mobile'
             ],
             'code' => [
                 'required',
                 'string',
                 'size:4',
-                'regex:/^[0-9]{4}$/' // فقط اعداد 4 رقمی
+                'regex:/^[0-9]{4}$/'
             ]
         ];
     }
@@ -60,13 +60,11 @@ class VerifyOtpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            // پیام‌های مربوط به فیلد mobile
             'mobile.required' => 'شماره موبایل الزامی است',
             'mobile.string' => 'شماره موبایل باید به صورت متن وارد شود',
+            'mobile.regex' => 'شماره موبایل باید با 09 شروع شود و 11 رقم باشد',
             'mobile.size' => 'شماره موبایل باید دقیقاً 11 رقم باشد',
-            'mobile.exists' => 'شماره موبایل وارد شده در سیستم ثبت نشده است. لطفاً ابتدا کد تایید را دریافت کنید',
-
-            // پیام‌های مربوط به فیلد code
+            'mobile.exists' => 'شماره موبایل وارد شده در سیستم ثبت نشده است',
             'code.required' => 'کد تایید الزامی است',
             'code.string' => 'کد تایید باید به صورت متن وارد شود',
             'code.size' => 'کد تایید باید دقیقاً 4 رقم باشد',
@@ -76,18 +74,24 @@ class VerifyOtpRequest extends FormRequest
 
     /**
      * Handle a failed validation attempt.
-     *
-     * @param  \Illuminate\Contracts\Validation\Validator  $validator
-     * @return void
-     *
-     * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     protected function failedValidation(Validator $validator)
     {
+        $errors = $validator->errors()->toArray();
+
+        // گرفتن اولین پیام خطا
+        $firstErrorMessage = null;
+
+        foreach ($errors as $field => $messages) {
+            if (!empty($messages)) {
+                $firstErrorMessage = $messages[0];
+                break;
+            }
+        }
+
         throw new HttpResponseException(response()->json([
             'success' => false,
-            'message' => 'خطا در اعتبارسنجی اطلاعات ارسالی',
-            'errors' => $validator->errors()
+            'message' => $firstErrorMessage ?? 'خطا در اعتبارسنجی اطلاعات'
         ], 422));
     }
 
@@ -96,35 +100,36 @@ class VerifyOtpRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // پاک کردن فاصله و کاراکترهای اضافی از شماره موبایل
         $this->merge([
             'mobile' => preg_replace('/[^0-9]/', '', $this->mobile),
-            'code' => preg_replace('/[^0-9]/', '', $this->code) // فقط اعداد از کد
+            'code' => preg_replace('/[^0-9]/', '', $this->code)
         ]);
     }
 
     /**
      * Configure the validator instance.
-     *
-     * @param  \Illuminate\Validation\Validator  $validator
-     * @return void
      */
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            // اعتبارسنجی سفارشی اضافی در صورت نیاز
+            // اگر قبلاً خطایی وجود دارد، نیازی به بررسی نیست
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $mobile = $this->input('mobile');
             $code = $this->input('code');
 
-            // بررسی اینکه آیا کد منقضی شده یا نه (اختیاری - در کنترلر هم بررسی می‌شود)
             $user = User::where('mobile', $mobile)->first();
 
             if ($user && $user->otp_code && $user->otp_code != $code) {
                 $validator->errors()->add('code', 'کد تایید وارد شده اشتباه است');
+                return;
             }
 
             if ($user && $user->otp_expires_at && now()->isAfter($user->otp_expires_at)) {
                 $validator->errors()->add('code', 'کد تایید منقضی شده است. لطفاً کد جدید دریافت کنید');
+                return;
             }
         });
     }

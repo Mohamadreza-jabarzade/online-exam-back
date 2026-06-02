@@ -14,16 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // تنظیمات middlewareها (اگه داری)
+        $middleware->prepend(\App\Http\Middleware\AuthenticateFromCookie::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // مدیریت خطای 401 (unauthenticated) برای API
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'هویت نامعتبر یا منقضی شده است',
-                    'error_code' => 401
+                    'message' => 'ابتدا وارد شوید',
                 ], 401);
             }
         });
