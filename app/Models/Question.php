@@ -2,61 +2,52 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Question extends Model
 {
-    use SoftDeletes;
-
+    use HasFactory;
     protected $fillable = [
-
-        'type',
-        'question_text',
-        'question_image',
-
-        'chapter_id',
-
-        'page_number',
-
-        'time_limit',
-
-        'difficulty',
-        'importance',
-
-        'correct_option_order',
-
-        'explanation',
-
-        'status',
-
-        'created_by',
+        'question_bank_id',
+        'creator_id',
+        'content',
+        'type'
     ];
 
-    protected $casts = [
-        'page_number' => 'integer',
-        'time_limit' => 'integer',
-        'correct_option_order' => 'integer',
-    ];
-
-    public function chapter()
+    protected function casts(): array
     {
-        return $this->belongsTo(Chapter::class);
+        return [
+            'score' => 'decimal:2',
+        ];
     }
 
-    public function options()
+    // بانک سوالی که این سوال به آن تعلق دارد
+    public function questionBank(): BelongsTo
     {
-        return $this->hasMany(
-            QuestionOption::class
-        )->orderBy('order');
+        return $this->belongsTo(QuestionBank::class);
     }
 
-    public function creator()
+    // طراح سوال
+    public function creator(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'created_by'
-        );
+        return $this->belongsTo(User::class, 'creator_id');
     }
 
+    // گزینه‌های این سوال
+    public function options(): HasMany
+    {
+        return $this->hasMany(QuestionOption::class)->orderBy('sort_order');
+    }
+
+    // آزمون‌هایی که این سوال در آن‌ها استفاده شده است
+    public function exams(): BelongsToMany
+    {
+        return $this->belongsToMany(Exam::class, 'exam_questions')
+            ->withPivot('sort_order', 'id')
+            ->withTimestamps();
+    }
 }

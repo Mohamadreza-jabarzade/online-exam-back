@@ -9,29 +9,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('question_options', function (Blueprint $table) {
-
             $table->id();
 
             $table->foreignId('question_id')
-                ->constrained('questions')
+                ->constrained()
                 ->cascadeOnDelete();
 
-            // متن گزینه
-            $table->text('option_text')->nullable();
+            $table->text('content');
 
-            // عکس گزینه
-            $table->string('option_image')->nullable();
+            $table->boolean('is_correct')
+                ->default(false);
 
-            // ترتیب 1 تا 4
-            $table->tinyInteger('order');
+            $table->unsignedInteger('sort_order')
+                ->default(0);
 
             $table->timestamps();
 
-            // هر سوال فقط 4 گزینه با شماره یکتا داشته باشد
-            $table->unique([
-                'question_id',
-                'order'
-            ]);
+            $table->index('question_id');
         });
     }
 

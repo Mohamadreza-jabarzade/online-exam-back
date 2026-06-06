@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -13,41 +14,42 @@ class User extends Authenticatable
 
     protected $fillable = [
         'mobile',
-        'name',
-        'family',
-        'is_profile_completed',
         'role',
         'otp_code',
-        'otp_expires_at'
+        'otp_expires_at',
+        'last_otp_sent_at',
+        'can_create_exam',
     ];
 
     protected $hidden = [
-        'otp_code'
+        'otp_code',
     ];
 
-    protected $casts = [
-        'otp_expires_at' => 'datetime',
-        'is_profile_completed' => 'boolean'
-    ];
-
-    // هلپِر برای چک کردن نقش
-    public function isAdmin(): bool
+    protected function casts(): array
     {
-        return $this->role === 'admin';
+        return [
+            'otp_expires_at' => 'datetime',
+            'last_otp_sent_at' => 'datetime',
+            'can_create_exam' => 'boolean',
+        ];
     }
 
-    public function isUser(): bool
+    // آزمون‌هایی که این کاربر ساخته است
+    public function createdExams(): HasMany
     {
-        return $this->role === 'user';
+        return $this->hasMany(Exam::class, 'creator_id');
     }
 
-    // هلپِر برای پروفایل
-    public function markProfileCompleted(): void
+    // بانک‌های سوالی که این کاربر ایجاد کرده است
+    public function questionBanks(): HasMany
     {
-        $this->update([
-            'name' => $this->name,
-            'family' => $this->family,
-            'is_profile_completed' => true
-        ]);
+        return $this->hasMany(QuestionBank::class);
     }
+
+    // سوالاتی که این کاربر طراح آن‌ها بوده است
+    public function createdQuestions(): HasMany
+    {
+        return $this->hasMany(Question::class, 'creator_id');
+    }
+
 }
