@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Dashborad\ExamStoreRequest;
-use App\Http\Requests\Dashborad\ExamUpdateRequest;
+use App\Http\Requests\Dashboard\ExamStoreRequest;
+use App\Http\Requests\Dashboard\ExamUpdateRequest;
 use App\Models\Exam;
 use Illuminate\Http\JsonResponse;
 
