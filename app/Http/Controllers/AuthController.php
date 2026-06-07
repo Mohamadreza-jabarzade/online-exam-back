@@ -14,11 +14,21 @@ class AuthController extends Controller
 
         $user = User::where('mobile', $mobile)->first();
 
+        // بررسی اینکه آیا کاربر وجود دارد و قبلا پیامکی گرفته یا خیر
         if ($user && $user->last_otp_sent_at) {
-            $timeSinceLastOtp = now()->diffInSeconds($user->last_otp_sent_at);
-            $remainingSeconds = 60 - $timeSinceLastOtp;
 
-            if ($remainingSeconds > 0) {
+            // ۱. تبدیل تاریخ به آبجکت کاربن
+            $lastSentAt = \Carbon\Carbon::parse($user->last_otp_sent_at);
+
+            // ۲. محاسبه دقیق زمانی که قفل باز می‌شود (۶۰ ثانیه بعد)
+            $unlockTime = $lastSentAt->copy()->addSeconds(60);
+
+            // ۳. اگر زمان فعلی، هنوز به زمان باز شدن قفل نرسیده است:
+            if (now()->isBefore($unlockTime)) {
+
+                // با استفاده از (int) ceil اعشار کاربن ۳ رو کاملا از بین می‌بریم و رند می‌کنیم
+                $remainingSeconds = (int) ceil(now()->diffInSeconds($unlockTime, false));
+
                 return response()->json([
                     'success' => false,
                     'message' => 'لطفاً ' . $remainingSeconds . ' ثانیه دیگر دوباره تلاش کنید',
@@ -29,11 +39,12 @@ class AuthController extends Controller
 
         $otpCode = rand(1000, 9999);
 
-        $user = User::firstOrCreate(
-            ['mobile' => $mobile],
-            ['mobile' => $mobile]
-        );
+        // اگر کاربر نبود، بسازیمش
+        if (!$user) {
+            $user = User::create(['mobile' => $mobile]);
+        }
 
+        // ثبت اطلاعات جدید
         $user->update([
             'otp_code' => $otpCode,
             'otp_expires_at' => now()->addMinute(),
