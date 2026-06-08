@@ -57,6 +57,7 @@ class AuthController extends Controller
             'data' => [
                 'remaining_seconds' => 60,
                 'debug_otp' => (string) $otpCode,
+                'mobile' => $mobile,
             ]
         ]);
     }
