@@ -16,6 +16,10 @@ class QuestionBankController extends Controller
     {
         $banks = auth()->user()->questionBanks()->get();
 
+        foreach ($banks as $key => $bank) {
+            $bank->questions_count = (count($bank->questions()->get()));
+        }
+
         return response()->json([
             'success' => true,
             'data' => $banks

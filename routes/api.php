@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\QuestionBankController;
+use App\Http\Controllers\QuestionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
@@ -21,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // روت های مدیریت ازمون ها در داشبورد
         Route::apiResource('exams', ExamController::class);
         Route::apiResource('banks', QuestionBankController::class);
+        Route::apiResource('questions', QuestionController::class);
     });
 
 
