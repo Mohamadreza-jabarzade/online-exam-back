@@ -26,6 +26,21 @@ class QuestionBankController extends Controller
         ], 200);
     }
 
+    public function bankQuestions(QuestionBank $bank)
+    {
+        if ($bank->user_id !== auth()->id() && !$bank->is_public) {
+            return response()->json([
+                'success' => false,
+                'message' => 'دسترسی مشاهده بانک خصوصی دیگران را ندارید.'
+            ], 403);
+        }
+        $questions = $bank->questions()->get();
+        return response()->json([
+            'success' => true,
+            'data' => ['questions'=>$questions]
+        ], 200);
+    }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -58,7 +73,7 @@ class QuestionBankController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $bank
+            'data' => array_merge((array)$bank,['questions'=> $bank->questions()])
         ], 200);
     }
 

@@ -22,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // روت های مدیریت ازمون ها در داشبورد
         Route::apiResource('exams', ExamController::class);
         Route::apiResource('banks', QuestionBankController::class);
+        Route::get('/bank/{bank}/questions', [QuestionBankController::class, 'bankQuestions']);
+        Route::apiResource('questions', QuestionController::class);
         Route::apiResource('questions', QuestionController::class);
     });
 
