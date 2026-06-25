@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
 
-use App\Models\User;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\SendOtpRequest;
 use App\Http\Requests\VerifyOtpRequest;
+use App\Models\User;
 
 class AuthController extends Controller
 {

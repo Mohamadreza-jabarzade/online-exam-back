@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\ExamManagement;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\BankStoreRequest;
 use App\Http\Requests\Dashboard\BankUpdateRequest;
 use App\Models\QuestionBank;
@@ -19,7 +20,6 @@ class QuestionBankController extends Controller
         foreach ($banks as $key => $bank) {
             $bank->questions_count = (count($bank->questions()->get()));
         }
-
         return response()->json([
             'success' => true,
             'data' => $banks

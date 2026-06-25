@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\ExamManagement;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\ExamStoreRequest;
 use App\Http\Requests\Dashboard\ExamUpdateRequest;
 use App\Models\Exam;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
 class ExamController extends Controller
@@ -36,18 +38,21 @@ class ExamController extends Controller
      */
     public function store(ExamStoreRequest $request): JsonResponse
     {
-        // دریافت دیتای تمیز
         $data = $request->validated();
 
-        // ایجاد آزمون برای کاربر لاگین شده
-        $exam = auth()->user()->createdExams()->create(array_merge($data, [
-            'status' => 'draft' // همیشه آزمون در ابتدا پیش‌نویس است
-        ]));
+        $data['start_time'] = Carbon::parse($data['start_time'])
+            ->timezone('Asia/Tehran');
+
+        $data['end_time'] = $data['start_time']
+            ->copy()
+            ->addMinutes((int) $data['duration_minutes']);
+
+        $exam = auth()->user()->createdExams()->create($data);
 
         return response()->json([
             'success' => true,
             'message' => 'آزمون با موفقیت ایجاد شد.',
-            'data' => $exam
+            'data' => $exam,
         ], 201);
     }
 
@@ -85,6 +90,17 @@ class ExamController extends Controller
 
         // دریافت دیتای تایید شده
         $data = $request->validated();
+        $data['start_time'] = Carbon::parse($data['start_time'])
+            ->timezone('Asia/Tehran');
+        if (isset($data['duration_minutes'])){
+            $data['end_time'] = $data['start_time']
+                ->copy()
+                ->addMinutes((int) $data['duration_minutes']);
+        }else{
+            $data['end_time'] = $data['start_time']
+                ->copy()
+                ->addMinutes((int) $exam->duration_minutes);
+        }
 
         // آپدیت آزمون
         $exam->update($data);
