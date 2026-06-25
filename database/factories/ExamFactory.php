@@ -38,6 +38,7 @@ class ExamFactory extends Factory
             'random_questions' => fake()->boolean(),
 
             'random_options' => fake()->boolean(),
+            'start_time' => fake()->dateTime(),
 
             'status' => fake()->randomElement([
                 'draft',

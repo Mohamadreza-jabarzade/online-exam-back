@@ -28,7 +28,16 @@ class QuestionFactory extends Factory
 
             'content' => fake()->randomElement($questions),
 
-            'type' => 'mcq_single',
+            'type' => fake()->randomElement([
+                'MULTIPLE_CHOICE_FOUR_OPTIONS',
+                'MULTIPLE_CHOICE',
+                'TRUE_FALSE',
+                'SHORT_ANSWER',
+                'LONG_ANSWER',
+                'FILL_IN_THE_BLANK',
+                'MATCHING',
+                'DESCRIPTIVE',
+            ]),
         ];
     }
 }

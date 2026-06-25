@@ -20,6 +20,9 @@ return new class extends Migration
 
             $table->unsignedInteger('duration_minutes')->default(30);
 
+            $table->dateTime('start_time');
+            $table->dateTime('end_time')->nullable();
+
             $table->boolean('show_result')->default(true);
             $table->boolean('show_correct_answers')->default(true);
 

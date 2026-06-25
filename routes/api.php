@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\ExamController;
-use App\Http\Controllers\QuestionBankController;
-use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ExamManagement\ExamController;
+use App\Http\Controllers\ExamManagement\QuestionBankController;
+use App\Http\Controllers\ExamManagement\QuestionController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
 
 Route::prefix('auth')->group(function () {
     // ارسال کد تایید
@@ -24,8 +24,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('banks', QuestionBankController::class);
         Route::get('/bank/{bank}/questions', [QuestionBankController::class, 'bankQuestions']);
         Route::apiResource('questions', QuestionController::class);
-        Route::apiResource('questions', QuestionController::class);
     });
+//    Route::prefix('exams')->group(function () {
+//        // روت های نمایش ازمون ها
+//        Route::get('{exam}', [::class, '']);
+//        Route::get('{exam}/questions', [::class, '']);
+//        Route::put('{exam}/questions/{question}/', [::class, '']);
+//        Route::post('{exam}/done', [::class, '']);
+//    });
 
 
     // اطلاعات کاربر لاگین شده

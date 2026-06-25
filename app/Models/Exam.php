@@ -20,6 +20,8 @@ class Exam extends Model
         'random_questions',
         'random_options',
         'status',
+        'start_time',
+        'end_time',
         'published_at',
     ];
 
@@ -32,6 +34,8 @@ class Exam extends Model
             'random_questions' => 'boolean',
             'random_options' => 'boolean',
             'published_at' => 'datetime',
+            'start_time' => 'datetime',
+            'end_time' => 'datetime',
         ];
     }
 

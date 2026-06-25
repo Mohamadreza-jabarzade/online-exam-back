@@ -23,6 +23,8 @@ class ExamStoreRequest extends FormRequest
             'show_correct_answers' => 'boolean',
             'random_questions' => 'boolean',
             'random_options' => 'boolean',
+            'status' => 'required|in:published,draft',
+            'start_time' => 'required',
         ];
     }
 
@@ -36,6 +38,9 @@ class ExamStoreRequest extends FormRequest
             'show_correct_answers.boolean' => 'مقدار نمایش پاسخ‌های صحیح باید true یا false باشد.',
             'random_questions.boolean'     => 'مقدار ترتیب تصادفی سوالات باید true یا false باشد.',
             'random_options.boolean'       => 'مقدار ترتیب تصادفی گزینه‌ها باید true یا false باشد.',
+            'status.required'       => 'وارد کردن وضعیت آزمون الزامی است.',
+            'status.in'       => 'وضعیت ازمون باید یکی از دو حالت انشار یا پیش نویس باشد.',
+            'start_time.required'       => 'زمان شروع ازمون را وارد کنید',
         ];
     }
 

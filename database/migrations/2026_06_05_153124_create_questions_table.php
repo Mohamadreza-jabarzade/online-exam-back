@@ -21,10 +21,15 @@ return new class extends Migration
 
             $table->longText('content');
 
-            $table->string('type')
-                ->default('mcq_single');
-
-
+            $table->string('type');
+            //MULTIPLE_CHOICE_FOUR_OPTIONS: "چهار گزینه‌ای",
+            //MULTIPLE_CHOICE: "چند گزینه‌ای",
+            //TRUE_FALSE: "درست / نادرست",
+            //SHORT_ANSWER: "پاسخ کوتاه",
+            //LONG_ANSWER: "پاسخ تشریحی",
+            //FILL_IN_THE_BLANK: "جای خالی",
+            //MATCHING: "تطبیقی",
+            //DESCRIPTIVE: "تشریحی",
 
             $table->timestamps();
 

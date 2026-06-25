@@ -24,6 +24,7 @@ class ExamUpdateRequest extends FormRequest
             'random_questions' => 'boolean',
             'random_options' => 'boolean',
             'status' => 'sometimes|in:draft,published,closed',
+            'start_time' => 'required',
         ];
     }
 
@@ -33,6 +34,7 @@ class ExamUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'start_time.required'       => 'زمان شروع ازمون را وارد کنید',
             'title.required'         => 'عنوان آزمون نمی‌تواند خالی باشد.',
             'title.max'              => 'عنوان آزمون نباید بیشتر از ۲۵۵ کاراکتر باشد.',
             'duration_minutes.integer' => 'زمان آزمون باید یک عدد صحیح باشد.',
