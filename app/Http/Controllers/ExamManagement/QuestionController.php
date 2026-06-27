@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\QuestionStoreRequest;
 use App\Http\Requests\Dashboard\QuestionUpdateRequest;
 use App\Models\Question;
+use App\Models\QuestionBank;
 use Illuminate\Http\JsonResponse;
 
 class QuestionController extends Controller
@@ -30,11 +31,41 @@ class QuestionController extends Controller
     {
         $data = $request->validated();
 
-        $question = auth()->user()->createdQuestions()->create($data);
+        // گزینه‌ها را جدا می‌کنیم
+        $options = $data['options'];
+        unset($data['options']);
+        $default_bank = QuestionBank::where('title' , 'بانک پیشفرض')->first();
+        if ($default_bank){
+            $bank = $default_bank;
+        }else{
+            $bank = QuestionBank::create([
+                'user_id' => auth()->user()->id,
+                'title' => 'بانک پیشفرض',
+                'description' => 'سوالات بدون بانک شما داخل این بانک ذخیره می شوند.',
+                'is_public' => false
+            ]);
+        }
+        // اتصال سوال به بانک
+        $data['question_bank_id'] = $bank->id;
+
+        // ایجاد سوال
+        $question = auth()->user()
+            ->createdQuestions()
+            ->create($data);
+
+        // ایجاد گزینه‌ها
+        foreach ($options as $index => $option) {
+            $question->options()->create([
+                'content' => $option['content'],
+                'is_correct' => $option['is_correct'] ?? false,
+                'sort_order' => $index + 1,
+            ]);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => ' سوال شما با موفقیت ایجاد شد.',
-            'data' => $question
+            'message' => 'سوال با موفقیت ایجاد شد.',
+            'data' => $question->load('options'),
         ], 201);
     }
 

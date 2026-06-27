@@ -16,7 +16,7 @@ return new class extends Migration
             $table->timestamp('otp_expires_at')->nullable();
             $table->timestamp('last_otp_sent_at')->nullable(); // فیلد جدید برای تایمر
             $table->boolean('can_create_exam')
-                ->default(false);
+                ->default(true);
             $table->timestamps();
         });
     }

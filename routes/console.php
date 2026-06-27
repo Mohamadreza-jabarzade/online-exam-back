@@ -1,8 +1,15 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+// routes/console.php
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+use App\Models\Exam;
+use Illuminate\Support\Facades\Schedule;
+
+// این کد هر دقیقه به صورت خودکار اجرا می‌شود
+Schedule::call(function () {
+    Exam::where('status', 'published')
+        ->where('end_time', '<=', now())
+        ->update([
+            'status' => 'closed'
+        ]);
+})->everyMinute();

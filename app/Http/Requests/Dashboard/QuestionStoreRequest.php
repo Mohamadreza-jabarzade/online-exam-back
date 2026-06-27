@@ -20,6 +20,7 @@ class QuestionStoreRequest extends FormRequest
             'content' => 'required|string',
             'type' => 'required|string',
             'question_bank_id' => 'nullable|numeric',
+            'options' => 'nullable|array',
         ];
     }
 
@@ -28,6 +29,7 @@ class QuestionStoreRequest extends FormRequest
         return [
             'content.required' => 'وارد کردن سوال الزامی است.',
             'content.string' => 'وارد کردن سوال الزامی است.',
+            'options.array' => 'گزینه های سوال باید ارایه باشد.',
             'type.required' => 'وارد کردن نوع سوال الزامی است',
             'type.string' => 'وارد کردن نوع سوال الزامی است',
             'question_bank_id.numeric' => 'فرمت ایدی بانک سوال به صورت عددی وارد نشده',

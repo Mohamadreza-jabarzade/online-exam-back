@@ -52,4 +52,9 @@ class User extends Authenticatable
         return $this->hasMany(Question::class, 'creator_id');
     }
 
+    public function examAttempts(): HasMany
+    {
+        return $this->hasMany(ExamAttempt::class);
+    }
+
 }

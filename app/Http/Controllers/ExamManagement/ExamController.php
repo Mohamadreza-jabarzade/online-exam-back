@@ -24,8 +24,21 @@ class ExamController extends Controller
             ], 403);
         }
 
-        // استفاده از Relation برای تمیزی بیشتر کد
-        $exams = auth()->user()->createdExams()->get();
+        $query = auth()->user()->createdExams();
+
+        // گرفتن وضعیت از URL
+        $status = request()->query('status');
+
+        // فقط وضعیت‌های مجاز
+        if (in_array($status, ['draft', 'closed', 'published'])) {
+            $query->where('status', $status);
+        }
+
+        $exams = $query->get();
+
+        $exams->each(function (Exam $exam) {
+            $exam->loadCount('questions');
+        });
 
         return response()->json([
             'success' => true,
@@ -40,19 +53,27 @@ class ExamController extends Controller
     {
         $data = $request->validated();
 
-        $data['start_time'] = Carbon::parse($data['start_time'])
-            ->timezone('Asia/Tehran');
+        $data['start_time'] = Carbon::parse($data['start_time'])->timezone('Asia/Tehran');
+        $data['end_time'] = $data['start_time']->copy()->addMinutes((int) $data['duration_minutes']);
 
-        $data['end_time'] = $data['start_time']
-            ->copy()
-            ->addMinutes((int) $data['duration_minutes']);
-
+        // ۱. آزمون ساخته می‌شود (و UUID در اینجا خودکار تولید و ذخیره می‌شود)
         $exam = auth()->user()->createdExams()->create($data);
+
+        // ۲. متصل کردن سوالات (طبق کدهای قبلی خودتان)
+        $syncData = [];
+        foreach ($data['questions'] as $index => $questionId) {
+            $syncData[$questionId] = ['sort_order' => $index + 1];
+        }
+        $exam->questions()->sync($syncData);
+
+        // ۳. تولید لینک و اضافه کردن آن به پاسخ
+        // فرض کنیم فرانت‌اند شما آدرسی مثل نمونه زیر دارد:
+        $exam->exam_link = "https://yourfrontend.com/take-exam/" . $exam->uuid;
 
         return response()->json([
             'success' => true,
             'message' => 'آزمون با موفقیت ایجاد شد.',
-            'data' => $exam,
+            'data' => $exam // داخل این داتا، فیلد exam_link اضافه شده است
         ], 201);
     }
 
@@ -68,7 +89,7 @@ class ExamController extends Controller
                 'message' => 'دسترسی مشاهده آزمون دیگران را ندارید.'
             ], 403);
         }
-
+        $exam->load('questions');
         return response()->json([
             'success' => true,
             'data' => $exam

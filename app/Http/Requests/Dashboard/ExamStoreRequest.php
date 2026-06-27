@@ -25,6 +25,7 @@ class ExamStoreRequest extends FormRequest
             'random_options' => 'boolean',
             'status' => 'required|in:published,draft',
             'start_time' => 'required',
+            'questions' => 'required|array',
         ];
     }
 
@@ -41,6 +42,8 @@ class ExamStoreRequest extends FormRequest
             'status.required'       => 'وارد کردن وضعیت آزمون الزامی است.',
             'status.in'       => 'وضعیت ازمون باید یکی از دو حالت انشار یا پیش نویس باشد.',
             'start_time.required'       => 'زمان شروع ازمون را وارد کنید',
+            'questions.required'       => 'سوالات ازمون را وارد کنید.',
+            'questions.array'       => 'سوالات ازمون را وارد کنید. به صورت ارایه',
         ];
     }
 

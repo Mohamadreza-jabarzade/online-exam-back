@@ -5,7 +5,9 @@ namespace App\Http\Controllers\ExamManagement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\BankStoreRequest;
 use App\Http\Requests\Dashboard\BankUpdateRequest;
+use App\Http\Requests\Dashboard\QuestionStoreRequest;
 use App\Models\QuestionBank;
+use App\Models\QuestionOption;
 use Illuminate\Http\JsonResponse;
 
 class QuestionBankController extends Controller
@@ -37,8 +39,40 @@ class QuestionBankController extends Controller
         $questions = $bank->questions()->get();
         return response()->json([
             'success' => true,
-            'data' => ['questions'=>$questions]
+            'data' => $questions
         ], 200);
+    }
+
+    public function bankQuestionStore(QuestionStoreRequest $request, QuestionBank $bank): JsonResponse
+    {
+        $data = $request->validated();
+
+        // گزینه‌ها را جدا می‌کنیم
+        $options = $data['options'];
+        unset($data['options']);
+
+        // اتصال سوال به بانک
+        $data['question_bank_id'] = $bank->id;
+
+        // ایجاد سوال
+        $question = auth()->user()
+            ->createdQuestions()
+            ->create($data);
+
+        // ایجاد گزینه‌ها
+        foreach ($options as $index => $option) {
+            $question->options()->create([
+                'content' => $option['content'],
+                'is_correct' => $option['is_correct'] ?? false,
+                'sort_order' => $index + 1,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'سوال با موفقیت ایجاد شد.',
+            'data' => $question->load('options'),
+        ], 201);
     }
 
     /**
