@@ -21,7 +21,7 @@ class Question extends Model
     protected function casts(): array
     {
         return [
-            'score' => 'decimal:2',
+            'qwscore' => 'decimal:2',
         ];
     }
 

@@ -44,7 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('results')->group(function () {
+        Route::get('/stats', [ResultController::class, 'stats']);
         Route::get('exam/{exam}', [ResultController::class, 'examResult']);
+        Route::get('attempt/{attempt}', [ResultController::class, 'examResult']); //result/attempt/12 -> data : { questions:[{},{},{}],attempt: {mobile:"", } }
     });
 
     // اطلاعات کاربر لاگین شده

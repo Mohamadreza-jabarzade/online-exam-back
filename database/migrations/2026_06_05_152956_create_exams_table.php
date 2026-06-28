@@ -32,7 +32,8 @@ return new class extends Migration
             $table->enum('status', [
                 'draft',
                 'published',
-                'closed'
+                'closed',
+                'in_progress'
             ])->default('draft');
             $table->timestamp('published_at')
                 ->nullable();

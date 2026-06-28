@@ -11,33 +11,19 @@ class QuestionFactory extends Factory
     public function definition(): array
     {
         $questions = [
-            'حاصل 2 + 2 چند است؟',
-            'پایتخت ایران کدام شهر است؟',
-            'PHP یک زبان چیست؟',
-            'Laravel بر پایه کدام زبان ساخته شده است؟',
-            'CPU مخفف چیست؟',
-            'حاصل 10 × 10 چند است؟',
-            'HTML مخفف چیست؟',
-            'کدام مورد سیستم مدیریت پایگاه داده است؟',
+            'کدام پروتکل در لایه انتقال شبکه قرار دارد؟',
+            'خروجی قطعه کد ارسالی در زبان PHP چیست؟',
+            'مفهوم کپسوله‌سازی (Encapsulation) در کدام گزینه به درستی آمده است؟',
+            'کدام یک از توابع زیر برای مدیریت نشست‌ها در مادل استفاده می‌شود؟',
+            'پیچیدگی زمانی الگوریتم مرتب‌سازی سریع در بدترین حالت چقدر است؟',
+            'هدف اصلی فیلد اتمپت در معماری پایگاه داده آزمون آنلاین چیست؟'
         ];
 
         return [
             'question_bank_id' => QuestionBank::factory(),
-
-            'creator_id' => User::factory(),
-
+            'creator_id' => User::factory()->examCreator(),
             'content' => fake()->randomElement($questions),
-
-            'type' => fake()->randomElement([
-                'MULTIPLE_CHOICE_FOUR_OPTIONS',
-                'MULTIPLE_CHOICE',
-                'TRUE_FALSE',
-                'SHORT_ANSWER',
-                'LONG_ANSWER',
-                'FILL_IN_THE_BLANK',
-                'MATCHING',
-                'DESCRIPTIVE',
-            ]),
+            'type' => 'MULTIPLE_CHOICE_FOUR_OPTIONS',
         ];
     }
 }

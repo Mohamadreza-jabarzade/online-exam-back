@@ -33,8 +33,6 @@ return new class extends Migration
                 'missed',
             ])->nullable();
 
-            $table->decimal('score', 8, 2)->nullable();
-
             $table->timestamps();
 
             $table->index(['exam_id', 'user_id']);

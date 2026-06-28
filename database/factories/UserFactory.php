@@ -10,16 +10,8 @@ class UserFactory extends Factory
     {
         return [
             'mobile' => '09' . fake()->unique()->numerify('#########'),
-
-            'role' => fake()->randomElement([
-                'user',
-                'user',
-                'user',
-                'admin'
-            ]),
-
-            'can_create_exam' => fake()->boolean(70),
-
+            'role' => 'user',
+            'can_create_exam' => false, // پیش‌فرض دانش‌آموز است
             'otp_code' => null,
             'otp_expires_at' => null,
             'last_otp_sent_at' => null,

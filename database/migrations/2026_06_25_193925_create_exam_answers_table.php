@@ -27,8 +27,11 @@ return new class extends Migration
                 ->constrained('question_options')
                 ->nullOnDelete();
 
+            $table->boolean('is_flagged')->default(false);
+
             $table->text('answer_text')
                 ->nullable();
+
 
             $table->timestamps();
 

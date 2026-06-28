@@ -14,7 +14,6 @@ class ExamAttempt extends Model
         'started_at',
         'finished_at',
         'status',
-        'score',
     ];
 
     protected function casts(): array
@@ -22,7 +21,6 @@ class ExamAttempt extends Model
         return [
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
-            'score' => 'decimal:2',
         ];
     }
 

@@ -16,7 +16,7 @@ class ExamController extends Controller
      */
     public function index(): JsonResponse
     {
-        // چک کردن دسترسی بر اساس فیلد boolean کاربر
+        // ۱. چک کردن دسترسی بر اساس فیلد boolean کاربر
         if (!auth()->user()->can_create_exam) {
             return response()->json([
                 'success' => false,
@@ -24,28 +24,37 @@ class ExamController extends Controller
             ], 403);
         }
 
-        $query = auth()->user()->createdExams();
+        // ۲. شروع کوئری و بهینه‌سازی شمارش سوالات و شرکت‌کنندگان برای جلوگیری از کندی سرعت (N+1 Problem)
+        // با اضافه کردن attempts، فیلد attempts_count به خروجی اضافه شده و در صورت نبود اتمپت، مقدار 0 می‌گیرد
+        $query = auth()->user()->createdExams()->withCount(['questions', 'attempts']);
 
-        // گرفتن وضعیت از URL
-        $status = request()->query('status');
+        // ۳. گرفتن وضعیت از URL و اعمال فیلتر (پشتیبانی از تک وضعیت یا چند وضعیت جدا شده با کاما)
+        $statusParam = request()->query('status');
 
-        // فقط وضعیت‌های مجاز
-        if (in_array($status, ['draft', 'closed', 'published'])) {
-            $query->where('status', $status);
+        if ($statusParam) {
+            $statuses = explode(',', $statusParam);
+
+            // لیست وضعیت‌های مجاز و استاندارد در سیستم شما
+            $allowedStatuses = ['draft', 'closed', 'published','in_progress'];
+
+            // فیلتر کردن آرایه ورودی تا فقط مقادیر مجاز باقی بمانند (جلوگیری از مقدار دهی خرابکارانه یا اشتباه)
+            $validStatuses = array_intersect($statuses, $allowedStatuses);
+
+            // اگر بعد از فیلتر، آرایه خالی نبود، شرط whereIn اعمال می‌شود
+            if (!empty($validStatuses)) {
+                $query->whereIn('status', $validStatuses);
+            }
         }
 
-        $exams = $query->get();
+        // ۴. مرتب‌سازی بر اساس جدیدترین آزمون‌های ساخته شده و دریافت دیتا
+        $exams = $query->latest()->get();
 
-        $exams->each(function (Exam $exam) {
-            $exam->loadCount('questions');
-        });
-
+        // ۵. بازگرداندن پاسخ نهایی به صورت JSON
         return response()->json([
             'success' => true,
             'data' => $exams
         ], 200);
     }
-
     /**
      * Store a newly created resource in storage.
      */
@@ -55,6 +64,7 @@ class ExamController extends Controller
 
         $data['start_time'] = Carbon::parse($data['start_time'])->timezone('Asia/Tehran');
         $data['end_time'] = $data['start_time']->copy()->addMinutes((int) $data['duration_minutes']);
+        $data['published_at'] = \Illuminate\Support\now();
 
         // ۱. آزمون ساخته می‌شود (و UUID در اینجا خودکار تولید و ذخیره می‌شود)
         $exam = auth()->user()->createdExams()->create($data);

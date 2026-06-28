@@ -185,6 +185,7 @@ class ExamController extends Controller
                 'content' => $question->content,
 
                 'user_answer' => $answer?->question_option_id,
+                'is_flagged' => $answer?->is_flagged,
 
                 'options' => $question->options->map(function ($option) {
                     return [
@@ -212,37 +213,72 @@ class ExamController extends Controller
      */
     public function saveAnswer(Request $request, Exam $exam): JsonResponse
     {
+        // ۱. اعتبار‌سنجی دقیق ورودی‌ها (پذیرش مقدار null برای answer_id)
         $request->validate([
             'question_id' => 'required|exists:questions,id',
             'answer_id' => 'nullable|exists:question_options,id',
             'is_flagged' => 'boolean'
         ]);
 
-        $attempt = $exam->attempts()
-            ->where('user_id', auth()->id())
-            ->where('status', 'in_progress')
-            ->first();
+        try {
+            // ۲. پیدا کردن جلسه آزمون فعال کاربر
+            $attempt = $exam->attempts()
+                ->where('user_id', auth()->id())
+                ->where('status', 'in_progress')
+                ->first();
 
-        if (!$attempt) {
+            if (!$attempt) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جلسه آزمون فعالی یافت نشد یا زمان آزمون به پایان رسیده است.'
+                ], 404);
+            }
+
+            $questionId = $request->question_id;
+            $answerId = $request->answer_id;
+            $isFlagged = $request->boolean('is_flagged', false);
+
+            // ۳. درج پاسخ یا به‌روزرسانی آن (با حفظ منطق اصلی شما)
+            $attempt->answers()->updateOrCreate(
+                ['question_id' => $questionId],
+                [
+                    'question_option_id' => $answerId, // اگر null باشد، پاسخ قبلی پاک می‌شود
+                    'is_flagged' => $isFlagged
+                ]
+            );
+
+            // ۴. تفکیک حالت‌ها و تعیین پیغام مناسب برای فرانت‌اند
+            if (!empty($answerId)) {
+                // حالت‌هایی که کاربر به سوال پاسخ داده است
+                $message = $isFlagged
+                    ? 'پاسخ شما ذخیره شد و سوال نیز نشانه‌گذاری گردید.'
+                    : 'پاسخ شما با موفقیت ذخیره شد.';
+            } else {
+                // حالت‌هایی که کاربر سوال را بدون پاسخ رها کرده یا پاسخ قبلی را پاک کرده است
+                $message = $isFlagged
+                    ? 'سوال بدون پاسخ ثبت شد و جهت بررسی مجدد نشانه‌گذاری گردید.'
+                    : 'پاسخ شما حذف شد و سوال به حالت عادی (بدون علامت) برگشت.';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
+
+        } catch (\Exception $e) {
+            // لاگ کردن خطا در سیستم برای بررسی توسط مدیر سایت
+            \Log::error('Error in saveAnswer: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'جلسه آزمون فعالی یافت نشد یا زمان آزمون به پایان رسیده است.'
-            ], 404);
+                'message' => 'خطای سیستمی رخ داده است. تیم فنی در حال بررسی است.',
+                'debug_info' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
+            ], 500);
         }
-
-        // درج پاسخ یا به‌روزرسانی آن
-        $attempt->answers()->updateOrCreate(
-            ['question_id' => $request->question_id],
-            [
-                'question_option_id' => $request->answer_id,
-                'is_flagged' => $request->is_flagged ?? false
-            ]
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'پاسخ با موفقیت ذخیره شد.'
-        ]);
     }
 
     /**

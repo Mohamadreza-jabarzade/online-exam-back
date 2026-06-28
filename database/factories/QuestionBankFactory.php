@@ -10,17 +10,15 @@ class QuestionBankFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
-
+            'user_id' => User::factory()->examCreator(),
             'title' => fake()->randomElement([
-                'بانک سوال ریاضی',
-                'بانک سوال فیزیک',
-                'بانک سوال شیمی',
-                'بانک سوال زبان',
-                'بانک سوال برنامه نویسی',
+                'بانک سوالات هوش مصنوعی',
+                'مجموعه تست‌های پایگاه داده',
+                'بانک سوال ریاضی ۱',
+                'سوالات تستی معماری کامپیوتر'
             ]),
-
             'description' => fake()->sentence(),
+            'is_public' => false,
         ];
     }
 }

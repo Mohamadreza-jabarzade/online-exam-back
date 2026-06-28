@@ -17,7 +17,7 @@ class QuestionBankController extends Controller
      */
     public function index(): JsonResponse
     {
-        $banks = auth()->user()->questionBanks()->get();
+        $banks = auth()->user()->questionBanks()->latest()->get();
 
         foreach ($banks as $key => $bank) {
             $bank->questions_count = (count($bank->questions()->get()));
@@ -36,7 +36,7 @@ class QuestionBankController extends Controller
                 'message' => 'دسترسی مشاهده بانک خصوصی دیگران را ندارید.'
             ], 403);
         }
-        $questions = $bank->questions()->get();
+        $questions = $bank->questions()->latest()->get();
         return response()->json([
             'success' => true,
             'data' => $questions
