@@ -5,142 +5,175 @@ namespace App\Http\Controllers\ExamManagement;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ResultController extends Controller
 {
+    /**
+     * دریافت نتیجه یک جلسه آزمون خاص
+     */
+    public function attemptResult(ExamAttempt $attempt): JsonResponse
+    {
+        $exam = $attempt->exam;
+
+        if ($exam->creator_id !== auth()->id()) {
+            return $this->errorResponse('شما دسترسی مشاهده این جلسه آزمون را ندارید.', 403);
+        }
+
+        // لود روابط مورد نیاز
+        $attempt->load(['user', 'answers.option']);
+        $exam->loadCount('questions');
+
+        $userAnswers = $attempt->answers->keyBy('question_id');
+        $correctAnswersCount = 0;
+
+        $questions = $exam->questions()->with('options')->get()->map(function ($question) use ($userAnswers, &$correctAnswersCount) {
+            $userAnswerId = $userAnswers->get($question->id)?->question_option_id;
+
+            // بهینه‌سازی بررسی صحت پاسخ کاربر با کمک firstWhere
+            $isCorrect = $userAnswerId && ($question->options->firstWhere('id', $userAnswerId)?->is_correct ?? false);
+
+            if ($isCorrect) {
+                $correctAnswersCount++;
+            }
+
+            return [
+                'id'          => $question->id,
+                'content'     => $question->content,
+                'is_correct'  => $isCorrect,
+                'user_answer' => $userAnswerId,
+                'options'     => $question->options->map(fn($option) => [
+                    'id'      => $option->id,
+                    'content' => $option->content,
+                    'correct' => $option->is_correct,
+                ])->values(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'attempt' => [
+                    'mobile'                => $attempt->user->mobile,
+                    'start_time'            => $attempt->started_at?->toIso8601String(),
+                    'end_time'              => $attempt->finished_at?->toIso8601String(),
+                    'time_spent'            => $this->calculateTimeSpent($attempt),
+                    'status'                => $attempt->status,
+                    'correct_answers_count' => $correctAnswersCount,
+                    'total_questions'       => $exam->questions_count,
+                ],
+                'exam' => [
+                    'questions_count'  => $exam->questions_count,
+                    'duration_minutes' => $exam->duration_minutes,
+                    'status'           => $exam->status,
+                ],
+                'questions' => $questions,
+            ],
+        ]);
+    }
+
+    /**
+     * دریافت آمار کلی داشبورد استاد/مدیر
+     */
     public function stats(): JsonResponse
     {
         $user = auth()->user();
 
-        // ۱. چک کردن دسترسی بیسیک طراح/مدیر
         if (!$user->can_create_exam) {
-            return response()->json([
-                'success' => false,
-                'message' => 'شما دسترسی به این بخش را ندارید.'
-            ], 403);
+            return $this->errorResponse('شما دسترسی به این بخش را ندارید.', 403);
         }
 
-        // ۲. تعداد کل آزمون‌های ساخته شده توسط این کاربر
-        $totalExams = $user->createdExams()->count();
-
-        // ۳. تعداد کل سوالات طراحی شده توسط این کاربر (بانک سوالات شخصی)
-        $totalQuestions = $user->createdQuestions()->count();
-
-        // ۴. تعداد کل اتمپت‌های «در انتظار تصحیح» برای تمام آزمون‌های این طراح
         $pendingGradingCount = ExamAttempt::where('status', 'submitted')
-            ->whereHas('exam', function ($query) use ($user) {
-                $query->where('creator_id', $user->id);
-            })
+            ->whereHas('exam', fn($query) => $query->where('creator_id', $user->id))
             ->count();
 
-        // ۵. آزمون‌های پیش رو و پیش‌نویس (فقط ۳ تای آخر)
-        // شامل آزمون‌های پیش‌نویس (draft) یا منتشرشده‌هایی (published) که تاریخ شروع آن‌ها در آینده است
         $upcomingExams = $user->createdExams()
-            ->select('id', 'title', 'start_time', 'status') // فقط فیلدهای درخواستی شما
-            ->where(function ($query) {
-                $query->where('status', 'draft')
-                    ->orWhere(function ($q) {
-                        $q->where('status', 'published')
-                            ->where('start_time', '>', now());
-                    });
-            })
+            ->select('id', 'title', 'start_time', 'status')
+            ->where('status', 'draft')
+            ->orWhere(fn($q) => $q->where('status', 'published')->where('start_time', '>', now()))
             ->latest()
-            ->limit(3) // محدود به ۳ تای آخر
+            ->limit(3)
             ->get();
 
-        // ۶. آزمون‌های تصحیح‌نشده (فقط ۵ تای آخر)
-        // شامل آزمون‌های بسته‌شده‌ای (closed) که حداقل یک تلاش تصحیح‌نشده (submitted) دارند
         $ungradedExams = $user->createdExams()
-            ->select('id', 'title', 'end_time') // شامل عنوان و تاریخ پایان آزمون
+            ->select('id', 'title', 'end_time')
             ->where('status', 'closed')
-            ->whereHas('attempts', function ($query) {
-                $query->where('status', 'submitted');
-            })
+            ->whereHas('attempts', fn($q) => $q->where('status', 'submitted'))
             ->withCount([
-                'attempts as total_attempts_count', // تعداد کل کسانی که آزمون داده‌اند (Y)
-                'attempts as graded_attempts_count' => function ($query) {
-                    $query->where('status', 'graded'); // تعداد کسانی که تصحیح شده‌اند (X)
-                },
-                'attempts as pending_attempts_count' => function ($query) {
-                    $query->where('status', 'submitted'); // تعداد برگه‌های باقی‌مانده
-                }
+                'attempts as total_attempts_count',
+                'attempts as graded_attempts_count' => fn($q) => $q->where('status', 'graded'),
+                'attempts as pending_attempts_count' => fn($q) => $q->where('status', 'submitted')
             ])
             ->latest()
-            ->limit(5) // محدود به ۵ تای آخر
+            ->limit(5)
             ->get();
 
-        // ۷. بازگرداندن پاسخ نهایی آمار و لیست‌ها به صورت یک‌جا
         return response()->json([
-            'success' => true,
+            'success'        => true,
             'stats' => [
-                'total_exams' => $totalExams,
-                'total_questions' => $totalQuestions,
+                'total_exams'     => $user->createdExams()->count(),
+                'total_questions' => $user->createdQuestions()->count(),
                 'pending_grading' => $pendingGradingCount,
             ],
             'upcoming_exams' => $upcomingExams,
             'ungraded_exams' => $ungradedExams
-        ], 200);
+        ]);
     }
+
+    /**
+     * دریافت لیست نتایج تمام شرکت‌کنندگان یک آزمون
+     */
     public function examResult(Exam $exam): JsonResponse
     {
-        // ۱. بارگذاری تعداد کل سوالات آزمون برای نمایش در خروجی
         $exam->loadCount('questions');
 
-        // ۲. دریافت لیست تمام تلاش‌ها به همراه اطلاعات کاربر و شمارش پاسخ‌های درست
         $takers = $exam->attempts()
             ->with('user')
-            ->withCount([
-                'answers as correct_answers_count' => function ($query) {
-                    // حل مشکل ارور ۵۰۰: تغییر ریلیشن از questionOption به option
-                    $query->whereHas('option', function ($q) {
-                        $q->where('is_correct', true);
-                    });
-                }
-            ])
+            ->withCount(['answers as correct_answers_count' => fn($q) => $q->whereHas('option', fn($o) => $o->where('is_correct', true))])
             ->get()
-            ->map(function ($attempt) {
+            ->map(fn($attempt) => [
+                'attempt_id'      => $attempt->id,
+                'user_id'         => $attempt->user->id,
+                'mobile'          => $attempt->user->mobile,
+                'status'          => $attempt->status,
+                'correct_answers' => $attempt->correct_answers_count,
+                'time_spent'      => $this->calculateTimeSpent($attempt),
+                'started_at'      => $attempt->started_at?->toIso8601String(),
+                'finished_at'     => $attempt->finished_at?->toIso8601String(),
+            ]);
 
-                $timeSpent = null;
-
-                // ۳. منطقِ تشخیص وضعیت زنده کاربر (کی الان داره آزمون میده / کی تموم کرده)
-                if ($attempt->started_at) {
-                    if ($attempt->status === 'in_progress') {
-                        // کاربر الان آنلاینه؛ تفاضل زمان شروع تا همین لحظه بر حسب کل ثانیه‌ها به صورت عدد صحیح
-                        $timeSpent = (int) $attempt->started_at->diffInSeconds(now());
-                    } elseif ($attempt->finished_at) {
-                        // کاربر آزمون رو تموم کرده؛ تفاضل زمان شروع تا پایان بر حسب کل ثانیه‌ها به صورت عدد صحیح
-                        $timeSpent = (int) $attempt->started_at->diffInSeconds($attempt->finished_at);
-                    }
-                }
-
-                // ۴. ساختاردهی اطلاعات دقیق هر شرکت‌کننده
-                return [
-                    'attempt_id' => $attempt->id,
-                    'user_id' => $attempt->user->id,
-                    'mobile' => $attempt->user->mobile,
-                    'status' => $attempt->status, // مقدار خام دیتابیس (in_progress, submitted و...)
-                    'correct_answers' => $attempt->correct_answers_count, // تعداد سوالاتی که درست جواب داده
-                    'time_spent' => $timeSpent, // خروجی به صورت عدد صحیح تام (مثلاً 90) یا null
-                    'started_at' => $attempt->started_at?->toIso8601String(),
-                    'finished_at' => $attempt->finished_at?->toIso8601String(),
-                ];
-            });
-
-        // ۵. بازگرداندن پاسخ نهایی به صورت JSON
         return response()->json([
             'success' => true,
-            'data' => [
+            'data'    => [
                 'exam' => [
-                    'id' => $exam->id,
-                    'title' => $exam->title,
-                    'total_questions' => $exam->questions_count,
+                    'id'               => $exam->id,
+                    'title'            => $exam->title,
+                    'total_questions'  => $exam->questions_count,
                     'duration_minutes' => $exam->duration_minutes,
                 ],
                 'takers' => $takers,
             ],
-        ], 200);
+        ]);
+    }
+
+    /**
+     * هلپر اختصاصی برای محاسبه زمان صرف شده (ثانیه) به صورت عدد صحیح
+     */
+    private function calculateTimeSpent(ExamAttempt $attempt): ?int
+    {
+        return $attempt->started_at
+            ? (int) $attempt->started_at->diffInSeconds($attempt->finished_at ?? now())
+            : null;
+    }
+
+    /**
+     * هلپر اختصاصی برای بازگرداندن خطاهای یکسان
+     */
+    private function errorResponse(string $message, int $status): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message
+        ], $status);
     }
 }

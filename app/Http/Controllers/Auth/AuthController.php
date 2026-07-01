@@ -15,19 +15,11 @@ class AuthController extends Controller
 
         $user = User::where('mobile', $mobile)->first();
 
-        // بررسی اینکه آیا کاربر وجود دارد و قبلا پیامکی گرفته یا خیر
         if ($user && $user->last_otp_sent_at) {
-
-            // ۱. تبدیل تاریخ به آبجکت کاربن
             $lastSentAt = \Carbon\Carbon::parse($user->last_otp_sent_at);
-
-            // ۲. محاسبه دقیق زمانی که قفل باز می‌شود (۶۰ ثانیه بعد)
             $unlockTime = $lastSentAt->copy()->addSeconds(60);
 
-            // ۳. اگر زمان فعلی، هنوز به زمان باز شدن قفل نرسیده است:
             if (now()->isBefore($unlockTime)) {
-
-                // با استفاده از (int) ceil اعشار کاربن ۳ رو کاملا از بین می‌بریم و رند می‌کنیم
                 $remainingSeconds = (int) ceil(now()->diffInSeconds($unlockTime, false));
 
                 return response()->json([
@@ -40,26 +32,33 @@ class AuthController extends Controller
 
         $otpCode = rand(1000, 9999);
 
-        // اگر کاربر نبود، بسازیمش
         if (!$user) {
             $user = User::create(['mobile' => $mobile]);
         }
 
-        // ثبت اطلاعات جدید
         $user->update([
             'otp_code' => $otpCode,
             'otp_expires_at' => now()->addMinute(),
             'last_otp_sent_at' => now(),
         ]);
 
+        // TODO: اینجا باید SMS ارسال شود
+        // SmsService::send($mobile, "کد تایید شما: $otpCode");
+
+        $responseData = [
+            'remaining_seconds' => 60,
+            'mobile' => $mobile,
+        ];
+
+        // فقط در محیط local کد را نمایش بده (برای تست)
+        if (config('app.env') === 'local') {
+            $responseData['debug_otp'] = (string) $otpCode;
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'کد تایید برای شما ارسال شد',
-            'data' => [
-                'remaining_seconds' => 60,
-                'debug_otp' => (string) $otpCode,
-                'mobile' => $mobile,
-            ]
+            'data' => $responseData,
         ]);
     }
 
@@ -82,7 +81,6 @@ class AuthController extends Controller
             'otp_expires_at' => null,
         ]);
 
-        // حذف توکن‌های قبلی (اختیاری)
         $user->tokens()->delete();
 
         $token = $user->createToken('auth-token')->plainTextToken;

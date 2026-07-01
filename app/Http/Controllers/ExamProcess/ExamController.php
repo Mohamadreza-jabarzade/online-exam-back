@@ -141,6 +141,18 @@ class ExamController extends Controller
             ->where('status', 'in_progress')
             ->first();
 
+        if (now()->gt($exam->end_time) && !$attempt) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => 'missed',
+                    'title' => $exam->title,
+                    'description' => $exam->description,
+                    'message' => 'زمان آزمون به پایان رسیده است و شما در آزمون شرکت نکرده‌اید.'
+                ]
+            ]);
+        }
+
         if (!$attempt) {
             return response()->json([
                 'success' => false,
@@ -213,15 +225,106 @@ class ExamController extends Controller
      */
     public function saveAnswer(Request $request, Exam $exam): JsonResponse
     {
-        // ۱. اعتبار‌سنجی دقیق ورودی‌ها (پذیرش مقدار null برای answer_id)
         $request->validate([
-            'question_id' => 'required|exists:questions,id',
-            'answer_id' => 'nullable|exists:question_options,id',
-            'is_flagged' => 'boolean'
+            'question_id' => 'required|integer|exists:questions,id',
+            'answer_id'   => 'nullable|exists:question_options,id',
         ]);
 
         try {
-            // ۲. پیدا کردن جلسه آزمون فعال کاربر
+            // بررسی اینکه سوال واقعاً به این آزمون تعلق دارد
+            $questionBelongsToExam = $exam->questions()
+                ->where('questions.id', $request->question_id)
+                ->exists();
+
+            if (!$questionBelongsToExam) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'این سوال متعلق به این آزمون نیست.'
+                ], 422);
+            }
+
+            $attempt = $exam->attempts()
+                ->where('user_id', auth()->id())
+                ->where('status', 'in_progress')
+                ->first();
+
+            if (!$attempt) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جلسه آزمون فعالی یافت نشد یا زمان آزمون به پایان رسیده است.'
+                ], 404);
+            }
+
+            // بررسی اینکه answer_id متعلق به همین سوال باشد
+            if ($request->answer_id) {
+                $optionBelongsToQuestion = \App\Models\QuestionOption::where('id', $request->answer_id)
+                    ->where('question_id', $request->question_id)
+                    ->exists();
+
+                if (!$optionBelongsToQuestion) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'این گزینه متعلق به سوال مورد نظر نیست.'
+                    ], 422);
+                }
+            }
+
+            $questionId = $request->question_id;
+            $answerId   = $request->answer_id;
+
+            // آپدیت یا ایجاد پاسخ بدون تغییر دادن وضعیت is_flagged قبلی (در صورت وجود)
+            // اگر رکوردی از قبل نباشد، مقدار پیش‌فرض دیتابیس برای is_flagged (که معمولا false است) اعمال می‌شود
+            $attempt->answers()->updateOrCreate(
+                ['question_id' => $questionId],
+                [
+                    'question_option_id' => $answerId,
+                ]
+            );
+
+            $message = !empty($answerId)
+                ? 'پاسخ شما با موفقیت ذخیره شد.'
+                : 'پاسخ شما حذف شد و سوال به حالت بدون پاسخ برگشت.';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in saveAnswer: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'خطای سیستمی رخ داده است.',
+                'debug_info' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                ] : null,
+            ], 500);
+        }
+    }
+
+    public function toggleFlag(Request $request, Exam $exam): JsonResponse
+    {
+        $request->validate([
+            'question_id' => 'required|integer|exists:questions,id',
+            'is_flagged'  => 'required|boolean',
+        ]);
+
+        try {
+            // بررسی اینکه سوال واقعاً به این آزمون تعلق دارد
+            $questionBelongsToExam = $exam->questions()
+                ->where('questions.id', $request->question_id)
+                ->exists();
+
+            if (!$questionBelongsToExam) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'این سوال متعلق به این آزمون نیست.'
+                ], 422);
+            }
+
             $attempt = $exam->attempts()
                 ->where('user_id', auth()->id())
                 ->where('status', 'in_progress')
@@ -235,48 +338,36 @@ class ExamController extends Controller
             }
 
             $questionId = $request->question_id;
-            $answerId = $request->answer_id;
-            $isFlagged = $request->boolean('is_flagged', false);
+            $isFlagged  = $request->boolean('is_flagged');
 
-            // ۳. درج پاسخ یا به‌روزرسانی آن (با حفظ منطق اصلی شما)
+            // تغییر وضعیت نشانه‌گذاری بدون دستکاری پاسخ ثبت شده (question_option_id)
             $attempt->answers()->updateOrCreate(
                 ['question_id' => $questionId],
                 [
-                    'question_option_id' => $answerId, // اگر null باشد، پاسخ قبلی پاک می‌شود
-                    'is_flagged' => $isFlagged
+                    'is_flagged' => $isFlagged,
                 ]
             );
 
-            // ۴. تفکیک حالت‌ها و تعیین پیغام مناسب برای فرانت‌اند
-            if (!empty($answerId)) {
-                // حالت‌هایی که کاربر به سوال پاسخ داده است
-                $message = $isFlagged
-                    ? 'پاسخ شما ذخیره شد و سوال نیز نشانه‌گذاری گردید.'
-                    : 'پاسخ شما با موفقیت ذخیره شد.';
-            } else {
-                // حالت‌هایی که کاربر سوال را بدون پاسخ رها کرده یا پاسخ قبلی را پاک کرده است
-                $message = $isFlagged
-                    ? 'سوال بدون پاسخ ثبت شد و جهت بررسی مجدد نشانه‌گذاری گردید.'
-                    : 'پاسخ شما حذف شد و سوال به حالت عادی (بدون علامت) برگشت.';
-            }
+            $message = $isFlagged
+                ? 'سوال با موفقیت نشانه‌گذاری شد.'
+                : 'نشانه سوال با موفقیت برداشته شد.';
 
             return response()->json([
                 'success' => true,
-                'message' => $message
+                'message' => $message,
             ]);
 
         } catch (\Exception $e) {
-            // لاگ کردن خطا در سیستم برای بررسی توسط مدیر سایت
-            \Log::error('Error in saveAnswer: ' . $e->getMessage());
+            \Log::error('Error in toggleFlag: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'خطای سیستمی رخ داده است. تیم فنی در حال بررسی است.',
+                'message' => 'خطای سیستمی رخ داده است.',
                 'debug_info' => config('app.debug') ? [
                     'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ] : null
+                    'file'    => $e->getFile(),
+                    'line'    => $e->getLine(),
+                ] : null,
             ], 500);
         }
     }

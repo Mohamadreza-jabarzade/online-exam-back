@@ -24,7 +24,7 @@ class ExamUpdateRequest extends FormRequest
             'random_questions' => 'boolean',
             'random_options' => 'boolean',
             'status' => 'sometimes|in:draft,published,closed',
-            'start_time' => 'required',
+            'start_time' => 'sometimes',
         ];
     }
 

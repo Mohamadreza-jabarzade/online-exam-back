@@ -39,14 +39,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('{exam:uuid}/attempt', [ExamProcessController::class, 'attempt']);
         // ذخیره یا ویرایش پاسخ هر سوال به صورت آنلاین
         Route::post('{exam:uuid}/save-answer', [ExamProcessController::class, 'saveAnswer']);
+        // نشانه‌گذاری یا برداشتن علامت سوال به صورت جداگانه
+        Route::post('{exam:uuid}/toggle-flag', [ExamProcessController::class, 'toggleFlag']);
         // خاتمه دادن و ثبت نهایی آزمون
         Route::get('{exam:uuid}/finish', [ExamProcessController::class, 'finish']);
-    });
+    });//exams/uuid/toggle-flag : POST request : question_id : 1 , is_flagged : boolean
 
     Route::prefix('results')->group(function () {
         Route::get('/stats', [ResultController::class, 'stats']);
         Route::get('exam/{exam}', [ResultController::class, 'examResult']);
-        Route::get('attempt/{attempt}', [ResultController::class, 'examResult']); //result/attempt/12 -> data : { questions:[{},{},{}],attempt: {mobile:"", } }
+        Route::get('attempt/{attempt}', [ResultController::class, 'attemptResult']);
     });
 
     // اطلاعات کاربر لاگین شده

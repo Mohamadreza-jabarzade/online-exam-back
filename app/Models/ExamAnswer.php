@@ -12,14 +12,12 @@ class ExamAnswer extends Model
         'question_id',
         'question_option_id',
         'answer_text',
+        'is_flagged',
     ];
 
     public function attempt(): BelongsTo
     {
-        return $this->belongsTo(
-            ExamAttempt::class,
-            'attempt_id'
-        );
+        return $this->belongsTo(ExamAttempt::class, 'attempt_id');
     }
 
     public function question(): BelongsTo
@@ -29,9 +27,6 @@ class ExamAnswer extends Model
 
     public function option(): BelongsTo
     {
-        return $this->belongsTo(
-            QuestionOption::class,
-            'question_option_id'
-        );
+        return $this->belongsTo(QuestionOption::class, 'question_option_id');
     }
 }

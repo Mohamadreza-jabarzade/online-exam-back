@@ -17,14 +17,14 @@ class QuestionBankController extends Controller
      */
     public function index(): JsonResponse
     {
-        $banks = auth()->user()->questionBanks()->latest()->get();
+        $banks = auth()->user()->questionBanks()
+            ->withCount('questions')
+            ->latest()
+            ->get();
 
-        foreach ($banks as $key => $bank) {
-            $bank->questions_count = (count($bank->questions()->get()));
-        }
         return response()->json([
             'success' => true,
-            'data' => $banks
+            'data' => $banks,
         ], 200);
     }
 
@@ -105,9 +105,11 @@ class QuestionBankController extends Controller
             ], 403);
         }
 
+        $bank->load('questions.options');
+
         return response()->json([
             'success' => true,
-            'data' => array_merge((array)$bank,['questions'=> $bank->questions()])
+            'data' => $bank,
         ], 200);
     }
 
